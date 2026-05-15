@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # MongoDB
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - microservicios-network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Servicio de Usuarios
+  usuario-service:
+    build:
+      context: ./usuario-service
+      dockerfile: Dockerfile
+    container_name: usuario-service
+    ports:
+      - "3001:3001"
+    environment:
+      MONGODB_URI: mongodb://admin:password@mongodb:27017/usuarios?authSource=admin
+      PORT: 3001
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - microservicios-network
+    restart: unless-stopped
+
+  # Servicio de Pedidos
+  pedido-service:
+    build:
+      context: ./pedido-service
+      dockerfile: Dockerfile
+    container_name: pedido-service
+    ports:
+      - "3002:3002"
+    environment:
+      MONGODB_URI: mongodb://admin:password@mongodb:27017/pedidos?authSource=admin
+      PORT: 3002
+      USUARIO_SERVICE_URL: http://usuario-service:3001
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      usuario-service:
+        condition: service_started
+    networks:
+      - microservicios-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+
+networks:
+  microservicios-network:
+    driver: bridge
