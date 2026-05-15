@@ -2,57 +2,79 @@
 
 ## 📋 Requisitos
 
-- Node.js 18+ 
-- npm o yarn
-- MongoDB local (O usar Docker solo para MongoDB)
+- Python 3.11+
+- PostgreSQL 15+
+- pip (gestor de paquetes Python)
 
 ## 🚀 Configuración Local Sin Docker
 
-### 1. Instalar MongoDB localmente
+### 1. Instalar PostgreSQL
 
 #### En Windows (Descarga)
-1. Ir a https://www.mongodb.com/try/download/community
-2. Descargar Windows MSI
-3. Instalar con MongoDB Compass (GUI opcional)
-4. Ejecutar: `mongod` en terminal
-
-#### Alternativa: Usar Docker solo para BD
+1. Ir a https://www.postgresql.org/download/windows/
+2. Descargar e instalar PostgreSQL 15+
+3. Recordar la contraseña del usuario `postgres` (usar: `password`)
+4. Verificar la instalación:
 ```bash
-docker run -d -p 27017:27017 -e MONGO_INITDB_ROOT_USERNAME=admin -e MONGO_INITDB_ROOT_PASSWORD=password mongo
+psql -U postgres -c "SELECT version();"
 ```
 
-### 2. Usuario Service
+### 2. Crear bases de datos
+
+```bash
+# Conectar a PostgreSQL
+psql -U postgres
+
+# Crear las bases de datos
+CREATE DATABASE usuarios;
+CREATE DATABASE pedidos;
+
+# Salir
+\q
+```
+
+### 3. Usuario Service
 
 ```bash
 cd usuario-service
 
-# Instalar dependencias
-npm install
+# Crear entorno virtual (recomendado)
+python -m venv venv
+venv\Scripts\activate  # En Windows
 
-# Crear .env local (ya existe, pero verifica)
+# Instalar dependencias
+pip install -r requirements.txt
+
+# Crear archivo .env (ya existe)
 cat .env
 
+# Ejecutar migraciones (SQLAlchemy lo hace automáticamente)
+
 # Iniciar servicio
-npm start
-# Verá: 🚀 Usuario Service ejecutándose en puerto 3001
+python main.py
+# Verá: INFO:     Uvicorn running on http://0.0.0.0:8001
 ```
 
 **En otra terminal:**
 
-### 3. Pedido Service
+### 4. Pedido Service
 
 ```bash
 cd pedido-service
 
-# Instalar dependencias
-npm install
+# Crear entorno virtual
+python -m venv venv
+venv\Scripts\activate  # En Windows
 
-# Verificar .env (editar USUARIO_SERVICE_URL si es necesario)
-# USUARIO_SERVICE_URL=http://localhost:3001
+# Instalar dependencias
+pip install -r requirements.txt
+
+# Crear archivo .env (ya existe)
+cat .env
 
 # Iniciar servicio
-npm start
-# Verá: 🚀 Pedido Service ejecutándose en puerto 3002
+python main.py
+# Verá: INFO:     Uvicorn running on http://0.0.0.0:8002
 ```
 
 ---
@@ -60,23 +82,29 @@ npm start
 ## 📚 URLs Locales
 
 ```
-Usuarios Swagger: http://localhost:3001/api-docs
-Pedidos Swagger:  http://localhost:3002/api-docs
-MongoDB:          localhost:27017
+Usuarios Swagger:  http://localhost:8001/docs
+Pedidos Swagger:   http://localhost:8002/docs
+Usuarios Health:   http://localhost:8001/health
+Pedidos Health:    http://localhost:8002/health
+PostgreSQL:        localhost:5432
 ```
 
 ---
 
-## 🔄 Desarrollo Continuo (Con nodemon)
+## 🔄 Desarrollo Continuo (Con reload)
 
-Para desarrollo con recarga automática:
+FastAPI/Uvicorn automáticamente recarga cuando cambias archivos:
 
 ```bash
-# En lugar de: npm start
-npm run dev
+# Simplemente ejecuta:
+python main.py
 
-# Esto ejecutará: nodemon server.js
 # Se reinicia automáticamente cuando cambias archivos
+```
+
+Para desactivar el reload:
+```bash
+uvicorn main:app --host 0.0.0.0 --port 8001 --no-reload
 ```
 
 ---
@@ -85,47 +113,72 @@ npm run dev
 
 ### usuario-service/.env
 ```
-MONGODB_URI=mongodb://admin:password@localhost:27017/usuarios?authSource=admin
-PORT=3001
+DATABASE_URL=postgresql://postgres:password@localhost:5432/usuarios
+PORT=8001
 ```
 
 ### pedido-service/.env
 ```
-MONGODB_URI=mongodb://admin:password@localhost:27017/pedidos?authSource=admin
-PORT=3002
-USUARIO_SERVICE_URL=http://localhost:3001
+DATABASE_URL=postgresql://postgres:password@localhost:5432/pedidos
+PORT=8002
+USUARIO_SERVICE_URL=http://localhost:8001
 ```
 
 ---
 
 ## 🧪 Testing Local
 
-### Terminal 1: MongoDB
+### Terminal 1: PostgreSQL
 ```bash
-mongod
-# Output: Listening on 27017
+# Asegúrate de que PostgreSQL está corriendo
+psql -U postgres -c "SELECT 1;"
 ```
 
 ### Terminal 2: Usuario Service
 ```bash
 cd usuario-service
-npm run dev
-# Output: 🚀 Usuario Service ejecutándose en puerto 3001
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+# Verá: INFO:     Uvicorn running on http://0.0.0.0:8001
 ```
 
 ### Terminal 3: Pedido Service
 ```bash
 cd pedido-service
-npm run dev
-# Output: 🚀 Pedido Service ejecutándose en puerto 3002
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+# Verá: INFO:     Uvicorn running on http://0.0.0.0:8002
 ```
 
-### Terminal 4: Testing (curl/Postman)
+### Terminal 4: Pruebas
+
+#### Crear usuario:
 ```bash
-# Probar creación de usuario
-curl -X POST http://localhost:3001/api/usuarios \
+curl -X POST http://localhost:8001/api/usuarios \
   -H "Content-Type: application/json" \
-  -d '{"nombre":"Test","email":"test@test.com","contraseña":"pass","telefono":"123"}'
+  -d '{
+    "nombre": "Test User",
+    "email": "test@example.com",
+    "contraseña": "password123",
+    "telefono": "123456789"
+  }'
+```
+
+#### Crear pedido (con ID de usuario):
+```bash
+curl -X POST http://localhost:8002/api/pedidos \
+  -H "Content-Type: application/json" \
+  -d '{
+    "usuarioId": 1,
+    "productos": [
+      {"nombre": "Item 1", "cantidad": 2, "precio": 10.0}
+    ],
+    "direccion": "Test Street 123"
+  }'
 ```
 
 ---
@@ -134,158 +187,72 @@ curl -X POST http://localhost:3001/api/usuarios \
 
 ### Ver logs detallados
 
-**Opción 1: Aumentar verbosidad en server.js**
-```javascript
-// Agregar al inicio de server.js
-if (process.env.DEBUG) {
-  mongoose.set('debug', true);
-}
+**Opción 1: Habilitar SQL logging**
+```python
+# Agregar en main.py
+import logging
+logging.basicConfig()
+logging.getLogger('sqlalchemy.engine').setLevel(logging.INFO)
 ```
 
-Ejecutar con:
+**Opción 2: Usar DEBUG mode**
 ```bash
-DEBUG=true npm run dev
+PYTHONUNBUFFERED=1 python main.py
 ```
 
-**Opción 2: Usar Chrome DevTools**
+### Acceder a la base de datos
+
+```bash
+# Conectar a usuarios
+psql -U postgres -d usuarios
+
+# Ver tablas
+\dt
+
+# Ver estructura de tabla
+\d usuarios
+
+# Ejecutar query
+SELECT * FROM usuarios;
+
+# Salir
+\q
+```
+
+---
+
+## 🔧 Troubleshooting
+
+### Error: "Connection refused" a PostgreSQL
+- Verificar que PostgreSQL está corriendo: `psql -U postgres`
+- Verificar credenciales en .env
+- Verificar puerto 5432 (default)
+
+### Error: "Module not found"
+```bash
+# Asegúrate de que estás en el venv activado
+# En Windows:
+venv\Scripts\activate
+# En Linux/Mac:
+source venv/bin/activate
+
+pip install -r requirements.txt
+```
+
+### Error: "Port already in use"
+```bash
+# Cambiar puerto en .env o línea de comandos
+uvicorn main:app --port 8003
+```
+
+### Resetear base de datos
+```bash
+psql -U postgres -d usuarios -c "DROP TABLE usuarios; DROP TABLE pedidos;"
+# Las tablas se recrearán automáticamente
+```**
 ```bash
 node --inspect server.js
 ```
 
 Luego en Chrome: `chrome://inspect`
 
-### Verificar conexión MongoDB
-
-```bash
-mongosh
-> use usuarios
-> db.usuarios.find()
-
-> use pedidos
-> db.pedidos.find()
-```
-
----
-
-## 🔄 Hot Reload
-
-Si quieres automáticamente reiniciar servicios al cambiar código:
-
-```bash
-# Instalar nodemon globalmente
-npm install -g nodemon
-
-# Ejecutar con nodemon
-nodemon server.js
-
-# O usa npm run dev (ya configurado en package.json)
-npm run dev
-```
-
----
-
-## 📊 Estructura típica de desarrollo
-
-```
-MicroServicios/
-├── usuario-service/
-│   ├── .env (mongodb local)
-│   ├── server.js
-│   ├── package.json
-│   └── models/routes/controllers
-│
-└── pedido-service/
-    ├── .env (mongodb local)
-    ├── server.js
-    ├── package.json
-    └── models/routes/controllers
-```
-
----
-
-## 🚀 Flujo de Desarrollo Típico
-
-1. Modificas `usuario-service/routes/usuarios.js`
-2. Nodemon detecta cambio
-3. Servicio se reinicia automáticamente
-4. Actualizas tus requests en Postman/curl
-5. Pruebas el cambio
-6. Ves resultados en Swagger UI
-
----
-
-## 🔧 Troubleshooting
-
-### Puerto ya está en uso
-
-```bash
-# Encontrar proceso usando puerto 3001
-netstat -ano | findstr :3001
-
-# Matar proceso
-taskkill /PID <PID> /F
-
-# O cambiar puerto en .env
-PORT=3003
-```
-
-### MongoDB error: connect ECONNREFUSED
-
-```bash
-# Verificar que MongoDB está corriendo
-mongosh
-
-# Si no funciona, iniciar MongoDB
-mongod
-
-# O en Docker
-docker run -d -p 27017:27017 mongo
-```
-
-### Error de CORS
-
-Verificar que servidor tiene CORS habilitado:
-```javascript
-const cors = require('cors');
-app.use(cors()); // Agregado en server.js
-```
-
-### Cambios no se reflejan
-
-- Verifica que usas `npm run dev` (nodemon)
-- Revisa que .env tiene variables correctas
-- Reinicia manual: Ctrl+C y `npm run dev` nuevamente
-
----
-
-## 📦 Dependencias Principales
-
-```json
-{
-  "express": "Servidor HTTP",
-  "mongoose": "ODM para MongoDB",
-  "axios": "Cliente HTTP para inter-servicios",
-  "swagger-jsdoc": "Genera spec OpenAPI",
-  "swagger-ui-express": "Interfaz Swagger UI",
-  "cors": "Habilita CORS",
-  "dotenv": "Variables de entorno",
-  "nodemon": "Auto-reload en desarrollo"
-}
-```
-
----
-
-## ✅ Checklist de Desarrollo
-
-- [ ] MongoDB corriendo en puerto 27017
-- [ ] Usuario Service corriendo en puerto 3001
-- [ ] Pedido Service corriendo en puerto 3002
-- [ ] Acceso a http://localhost:3001/api-docs
-- [ ] Acceso a http://localhost:3002/api-docs
-- [ ] Creación de usuario exitosa
-- [ ] Creación de pedido verificando usuario
-- [ ] Cambio de estado de pedido
-- [ ] Obtener pedidos por usuario
-- [ ] Logs sin errores en consola
-
----
