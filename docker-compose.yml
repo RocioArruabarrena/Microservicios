@@ -23,6 +23,25 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # Servicio de Autenticación
+  auth-service:
+    build:
+      context: ./auth
+      dockerfile: Dockerfile
+    container_name: auth-service
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-your_super_secret_jwt_key_minimum_32_characters_long}
+      JWT_EXPIRES_IN: 7d
+      SERVICE_NAME: auth-service
+      API_VERSION: v1
+    networks:
+      - microservicios-network
+    restart: unless-stopped
+
   # Servicio de Usuarios
   usuario-service:
     build:
@@ -32,8 +51,12 @@ services:
     ports:
       - "8001:8001"
     environment:
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/usuarios
+      NODE_ENV: production
       PORT: 8001
+      JWT_SECRET: ${JWT_SECRET:-your_super_secret_jwt_key_minimum_32_characters_long}
+      JWT_EXPIRES_IN: 7d
+      API_VERSION: v1
+      MONGODB_URI: mongodb://mongodb:27017/usuarios
     depends_on:
       postgres:
         condition: service_healthy
@@ -50,13 +73,19 @@ services:
     ports:
       - "8002:8002"
     environment:
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/pedidos
+      NODE_ENV: production
       PORT: 8002
+      JWT_SECRET: ${JWT_SECRET:-your_super_secret_jwt_key_minimum_32_characters_long}
+      JWT_EXPIRES_IN: 7d
+      API_VERSION: v1
       USUARIO_SERVICE_URL: http://usuario-service:8001
+      MONGODB_URI: mongodb://mongodb:27017/pedidos
     depends_on:
       postgres:
         condition: service_healthy
       usuario-service:
+        condition: service_started
+      auth-service:
         condition: service_started
     networks:
       - microservicios-network
@@ -68,3 +97,4 @@ volumes:
 networks:
   microservicios-network:
     driver: bridge
+

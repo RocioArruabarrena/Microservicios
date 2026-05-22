@@ -33,7 +33,7 @@ app.get('/health', (req, res) => {
   res.json({ status: 'Pedido service is running' });
 });
 
-const PORT = process.env.PORT || 3002;
+const PORT = process.env.PORT || 8002;
 app.listen(PORT, () => {
   console.log(`🚀 Pedido Service ejecutándose en puerto ${PORT}`);
   console.log(`📚 Documentación Swagger: http://localhost:${PORT}/api-docs`);

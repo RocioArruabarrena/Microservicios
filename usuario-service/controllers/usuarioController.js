@@ -9,20 +9,28 @@ exports.crearUsuario = async (req, res) => {
     // Validar que no exista usuario con ese email
     const usuarioExistente = await Usuario.findOne({ email });
     if (usuarioExistente) {
-      return res.status(400).json({ error: 'El email ya está registrado' });
+      return res.status(400).json({ success: false, error: 'El email ya está registrado' });
     }
+
+    // Hashear la contraseña antes de guardar
+    const hashedPassword = await bcrypt.hash(contraseña, 12);
 
     const nuevoUsuario = new Usuario({
       nombre,
       email,
-      contraseña,
+      contraseña: hashedPassword,
       telefono,
     });
 
     const usuarioGuardado = await nuevoUsuario.save();
-    res.status(201).json(usuarioGuardado);
+    
+    // No retornar la contraseña hasheada
+    const usuarioResponse = usuarioGuardado.toObject();
+    delete usuarioResponse.contraseña;
+    
+    res.status(201).json({ success: true, data: usuarioResponse });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
@@ -30,9 +38,15 @@ exports.crearUsuario = async (req, res) => {
 exports.obtenerUsuarios = async (req, res) => {
   try {
     const usuarios = await Usuario.find({});
-    res.json(usuarios);
+    // No retornar contraseñas
+    const usuariosResponse = usuarios.map(u => {
+      const obj = u.toObject();
+      delete obj.contraseña;
+      return obj;
+    });
+    res.json({ success: true, data: usuariosResponse });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
@@ -41,11 +55,13 @@ exports.obtenerUsuarioById = async (req, res) => {
   try {
     const usuario = await Usuario.findById(req.params.id);
     if (!usuario) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
+      return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
     }
-    res.json(usuario);
+    const usuarioResponse = usuario.toObject();
+    delete usuarioResponse.contraseña;
+    res.json({ success: true, data: usuarioResponse });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
@@ -61,12 +77,14 @@ exports.actualizarUsuario = async (req, res) => {
     );
 
     if (!usuarioActualizado) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
+      return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
     }
 
-    res.json(usuarioActualizado);
+    const usuarioResponse = usuarioActualizado.toObject();
+    delete usuarioResponse.contraseña;
+    res.json({ success: true, data: usuarioResponse });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 
@@ -76,11 +94,11 @@ exports.eliminarUsuario = async (req, res) => {
     const usuarioEliminado = await Usuario.findByIdAndDelete(req.params.id);
 
     if (!usuarioEliminado) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
+      return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
     }
 
-    res.json({ mensaje: 'Usuario eliminado correctamente' });
+    res.json({ success: true, mensaje: 'Usuario eliminado correctamente' });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };

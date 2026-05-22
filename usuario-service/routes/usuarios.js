@@ -1,13 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const usuarioController = require('../controllers/usuarioController');
+const { authenticate, authorize } = require('../middlewares/auth.middleware');
 
 /**
  * @swagger
  * /api/usuarios:
  *   post:
- *     summary: Crear un nuevo usuario
+ *     summary: Crear un nuevo usuario (Admin)
  *     tags: [Usuarios]
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -28,24 +31,30 @@ const usuarioController = require('../controllers/usuarioController');
  *         description: Usuario creado exitosamente
  *       400:
  *         description: El email ya está registrado
+ *       401:
+ *         description: No autorizado
  *       500:
  *         description: Error del servidor
  */
-router.post('/', usuarioController.crearUsuario);
+router.post('/', authenticate, authorize('admin'), usuarioController.crearUsuario);
 
 /**
  * @swagger
  * /api/usuarios:
  *   get:
- *     summary: Obtener todos los usuarios
+ *     summary: Obtener todos los usuarios (Admin)
  *     tags: [Usuarios]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: Lista de usuarios
+ *       401:
+ *         description: No autorizado
  *       500:
  *         description: Error del servidor
  */
-router.get('/', usuarioController.obtenerUsuarios);
+router.get('/', authenticate, authorize('admin'), usuarioController.obtenerUsuarios);
 
 /**
  * @swagger
@@ -53,6 +62,8 @@ router.get('/', usuarioController.obtenerUsuarios);
  *   get:
  *     summary: Obtener usuario por ID
  *     tags: [Usuarios]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -63,12 +74,14 @@ router.get('/', usuarioController.obtenerUsuarios);
  *     responses:
  *       200:
  *         description: Usuario encontrado
+ *       401:
+ *         description: No autorizado
  *       404:
  *         description: Usuario no encontrado
  *       500:
  *         description: Error del servidor
  */
-router.get('/:id', usuarioController.obtenerUsuarioById);
+router.get('/:id', authenticate, usuarioController.obtenerUsuarioById);
 
 /**
  * @swagger
@@ -76,6 +89,8 @@ router.get('/:id', usuarioController.obtenerUsuarioById);
  *   put:
  *     summary: Actualizar usuario
  *     tags: [Usuarios]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -100,19 +115,23 @@ router.get('/:id', usuarioController.obtenerUsuarioById);
  *     responses:
  *       200:
  *         description: Usuario actualizado
+ *       401:
+ *         description: No autorizado
  *       404:
  *         description: Usuario no encontrado
  *       500:
  *         description: Error del servidor
  */
-router.put('/:id', usuarioController.actualizarUsuario);
+router.put('/:id', authenticate, usuarioController.actualizarUsuario);
 
 /**
  * @swagger
  * /api/usuarios/{id}:
  *   delete:
- *     summary: Eliminar usuario
+ *     summary: Eliminar usuario (Admin)
  *     tags: [Usuarios]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -122,11 +141,15 @@ router.put('/:id', usuarioController.actualizarUsuario);
  *     responses:
  *       200:
  *         description: Usuario eliminado
+ *       401:
+ *         description: No autorizado
+ *       403:
+ *         description: Acceso denegado
  *       404:
  *         description: Usuario no encontrado
  *       500:
  *         description: Error del servidor
  */
-router.delete('/:id', usuarioController.eliminarUsuario);
+router.delete('/:id', authenticate, authorize('admin'), usuarioController.eliminarUsuario);
 
 module.exports = router;
