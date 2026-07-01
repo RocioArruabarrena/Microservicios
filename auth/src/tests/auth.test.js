@@ -24,7 +24,7 @@ process.env.JWT_EXPIRES_IN = '7d';
 process.env.API_VERSION = 'v1';
 
 const request = require('supertest');
-const app = require('../src/app');
+const app = require('../app');
 
 // Base URL del auth service
 const BASE = '/api/v1/auth';
