@@ -1,4 +1,4 @@
-const jwt = require('jsonwebtoken');
+const JwtService = require('../services/JwtService');
 const userStore = require('../models/userStore');
 
 const authenticate = (req, res, next) => {
@@ -9,7 +9,7 @@ const authenticate = (req, res, next) => {
 
   try {
     const token = authHeader.split(' ')[1];
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = JwtService.verifyToken(token);
     const user = userStore.findById(decoded.id);
     if (!user) {
       return res.status(401).json({ success: false, message: 'Usuario no encontrado' });

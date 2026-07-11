@@ -185,4 +185,25 @@ router.post(
  */
 router.get('/me', authenticate, getMe);
 
+
+
+/**
+ * @swagger
+ * /auth/profile:
+ *   get:
+ *     tags: [Auth]
+ *     summary: Obtener datos del usuario desde el token JWT
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Datos extraídos del token
+ *       401:
+ *         description: No autenticado
+ */
+router.get('/profile', authenticate, (req, res) => {
+  const { id, email, role } = req.authUser;
+  res.json({ id, email, role });
+});
+
 module.exports = router;
